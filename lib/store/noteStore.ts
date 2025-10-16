@@ -29,17 +29,15 @@ export const useNoteStore = create<NoteStore>()(
     }),
     {
       name: "notehub-note-store-v1",
-      storage: createJSONStorage(() => {
-        if (typeof window === "undefined") {
-          // SSR fallback
-          return {
-            getItem: (_: string): null => null,
-            setItem: (_: string, __: string): void => {},
-            removeItem: (_: string): void => {},
-          } as Storage;
-        }
-        return localStorage;
-      }),
+      storage: createJSONStorage(() =>
+        typeof window === "undefined"
+          ? {
+              getItem: async () => null,
+              setItem: async () => {},
+              removeItem: async () => {},
+            }
+          : localStorage
+      ),
     }
   )
 );
