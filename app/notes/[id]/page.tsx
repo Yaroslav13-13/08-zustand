@@ -30,6 +30,7 @@ export async function generateMetadata({
       },
     };
   } catch (error) {
+    console.error("Failed to fetch note:", error);
     return {
       title: `Note | NoteHub`,
       description: "Note details",
@@ -51,6 +52,6 @@ export async function generateMetadata({
 }
 
 export default async function NotePage() {
-  // NoteDetails.client.tsx підключимо окремо — тут залишаю місце для клієнтського компонента
+  // Залишаю місце для клієнтського компонента
   return null;
 }
