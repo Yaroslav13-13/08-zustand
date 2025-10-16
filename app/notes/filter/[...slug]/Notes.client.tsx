@@ -7,8 +7,7 @@ import NoteList from "@/components/NoteList/NoteList";
 import Loader from "@/components/Loader/Loader";
 import SearchBox from "@/components/SearchBox/SearchBox";
 import Pagination from "@/components/Pagination/Pagination";
-import NoteForm from "@/components/NoteForm/NoteForm";
-import Modal from "@/components/Modal/Modal";
+import Link from "next/link";
 import Notification from "@/components/Notification/Notification";
 import { useDebounce } from "use-debounce";
 import css from "@/components/SearchBox/SearchBox.module.css";
@@ -24,7 +23,6 @@ const NotesClient: React.FC<NotesClientProps> = ({ tag }) => {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [notificationType, setNotificationType] =
     useState<NotificationType>("success");
@@ -70,13 +68,14 @@ const NotesClient: React.FC<NotesClientProps> = ({ tag }) => {
     <div>
       <div className={css.searchbox}>
         <SearchBox value={search} onChange={setSearch} />
-        <button className={css.button} onClick={() => setIsModalOpen(true)}>
+        <Link href="/notes/action/create" className={css.button}>
           + Create note
-        </button>
+        </Link>
       </div>
 
       {isLoading && <Loader />}
       {!isLoading && notes.length > 0 && <NoteList notes={notes} />}
+
       {totalPages > 1 && (
         <Pagination
           page={page}
@@ -84,11 +83,7 @@ const NotesClient: React.FC<NotesClientProps> = ({ tag }) => {
           onPageChange={setPage}
         />
       )}
-      {isModalOpen && (
-        <Modal onClose={() => setIsModalOpen(false)}>
-          <NoteForm onCancel={() => setIsModalOpen(false)} />
-        </Modal>
-      )}
+
       {notification && (
         <Notification
           message={notification}

@@ -1,6 +1,36 @@
 import css from "./page.module.css";
 import Link from "next/link";
 import { FaBolt, FaLock, FaFolderOpen } from "react-icons/fa";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Home",
+  description:
+    "Welcome to NoteHub — your personal space to create, edit, and organize notes with ease. Simple, fast, and built with Next.js.",
+  keywords: [
+    "NoteHub",
+    "note app",
+    "create notes",
+    "online notes",
+    "Next.js",
+    "React notes app",
+  ],
+  openGraph: {
+    title: "NoteHub — Your Personal Notes Organizer",
+    description:
+      "Create and manage your notes effortlessly with NoteHub. Keep all your ideas in one place.",
+    url: "https://notehub.app/",
+    siteName: "NoteHub",
+    images: [
+      {
+        url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
+        width: 1200,
+        height: 630,
+        alt: "NoteHub Home Preview",
+      },
+    ],
+  },
+};
 
 export default function Home() {
   return (

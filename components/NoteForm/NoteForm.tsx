@@ -1,165 +1,152 @@
-// import React from "react";
-// import { Formik, Form, Field, ErrorMessage } from "formik";
-// import * as Yup from "yup";
-// import { useMutation, useQueryClient } from "@tanstack/react-query";
-// import css from "./NoteForm.module.css";
-// import { createNote, type CreateNotePayload } from "../../lib/api";
-// import type { NoteTag } from "../../types/note";
-
-// interface NoteFormProps {
-//   onCancel: () => void;
-// }
-
-// const noteTags: NoteTag[] = ["Todo", "Work", "Personal", "Meeting", "Shopping"];
-
-// const schema = Yup.object().shape({
-//   title: Yup.string()
-//     .min(3, "Title must be at least 3 characters")
-//     .max(50, "Title must be at most 50 characters")
-//     .required("Enter title"),
-//   content: Yup.string().max(500, "Content must be less than 500 characters"),
-//   tag: Yup.string()
-//     .oneOf(noteTags, "Select a valid tag")
-//     .required("Select a tag"),
-// });
-
-// const NoteForm: React.FC<NoteFormProps> = ({ onCancel }) => {
-//   const queryClient = useQueryClient();
-
-//   const mutation = useMutation({
-//     mutationFn: createNote,
-//     onSuccess: () => {
-//       queryClient.invalidateQueries({ queryKey: ["notes"] });
-//       onCancel();
-//     },
-//   });
-//   return (
-//     <Formik
-//       initialValues={{ title: "", content: "", tag: "Todo" as NoteTag }}
-//       validationSchema={schema}
-//       onSubmit={async (values, { resetForm }) => {
-//         await mutation.mutateAsync(values as CreateNotePayload);
-//         resetForm();
-//       }}
-//     >
-//       {() => (
-//         <Form className={css.form}>
-//           <label className={css.formGroup}>
-//             Title
-//             <Field name="title" className={css.input} />
-//             <ErrorMessage name="title" component="div" className={css.error} />
-//           </label>
-
-//           <label className={css.formGroup}>
-//             Content
-//             <Field as="textarea" name="content" className={css.textarea} />
-//             <ErrorMessage
-//               name="content"
-//               component="div"
-//               className={css.error}
-//             />
-//           </label>
-
-//           <label className={css.formGroup}>
-//             Tag
-//             <Field as="select" name="tag" className={css.select}>
-//               {noteTags.map((tag) => (
-//                 <option
-//                   key={tag}
-//                   value={tag}
-//                   className={css[`tag_${tag.toLowerCase()}`]}
-//                 >
-//                   {tag}
-//                 </option>
-//               ))}
-//             </Field>
-//             <ErrorMessage name="tag" component="div" className={css.error} />
-//           </label>
-
-//           <div className={css.actions}>
-//             <button
-//               type="button"
-//               onClick={onCancel}
-//               className={css.cancelButton}
-//             >
-//               Cancel
-//             </button>
-//             <button
-//               type="submit"
-//               disabled={mutation.isPending}
-//               className={css.submitButton}
-//             >
-//               Create
-//             </button>
-//           </div>
-//         </Form>
-//       )}
-//     </Formik>
-//   );
-// };
-
-// export default NoteForm;
-
 "use client";
+
+import React, { useEffect, useState } from "react";
+import css from "./NoteForm.module.css";
+import { createNote, type CreateNotePayload } from "@/lib/api";
+import type { NoteTag } from "@/types/note";
 import { useRouter } from "next/navigation";
-import { useNoteStore } from "@/lib/store/noteStore";
-import { useState, useEffect } from "react";
+import { useNoteStore, initialDraft } from "@/lib/store/noteStore";
 
-export default function NoteForm() {
+interface NoteFormProps {
+  onCancel?: () => void;
+}
+
+const noteTags: NoteTag[] = ["Todo", "Work", "Personal", "Meeting", "Shopping"];
+
+export default function NoteForm({ onCancel }: NoteFormProps) {
   const router = useRouter();
-  const { draft, setDraft, clearDraft } = useNoteStore();
+  const draft = useNoteStore((s) => s.draft);
+  const setDraft = useNoteStore((s) => s.setDraft);
+  const clearDraft = useNoteStore((s) => s.clearDraft);
 
-  const [form, setForm] = useState(draft);
+  // Локальний стан для керування полями форми (ініціалізуємо з draft або initialDraft)
+  const [form, setForm] = useState({
+    title: draft?.title ?? initialDraft.title,
+    content: draft?.content ?? initialDraft.content,
+    tag: (draft?.tag as NoteTag) ?? initialDraft.tag,
+  });
 
+  // Якщо draft змінюється асинхронно (persist), оновимо локальний стан
   useEffect(() => {
-    setForm(draft);
+    setForm({
+      title: draft?.title ?? initialDraft.title,
+      content: draft?.content ?? initialDraft.content,
+      tag: (draft?.tag as NoteTag) ?? initialDraft.tag,
+    });
   }, [draft]);
 
+  // Оновлення поля — оновлюємо і локально, і в Zustand (draft)
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    setDraft({ [name]: value });
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+      // оновлюємо draft
+      setDraft({ [name]: value } as Partial<typeof next>);
+      return next;
+    });
   };
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // створення нотатки через API
-    await fetch("/api/notes", {
-      method: "POST",
-      body: JSON.stringify(form),
-      headers: { "Content-Type": "application/json" },
-    });
-    clearDraft();
-    router.back();
+    setIsSubmitting(true);
+    setError(null);
+
+    // прості валідації
+    if (!form.title || form.title.trim().length < 3) {
+      setError("Title must be at least 3 characters");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const payload: CreateNotePayload = {
+        title: form.title.trim(),
+        content: form.content?.trim() || "",
+        tag: form.tag,
+      };
+      await createNote(payload);
+      // після успіху — очищаємо draft і повертаємось на попередню сторінку
+      clearDraft();
+      router.back();
+    } catch (err: any) {
+      setError(err?.message ?? "Something went wrong");
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
+    // При Cancel — draft НЕ очищається (згідно вимоги)
+    if (onCancel) {
+      onCancel();
+    } else {
+      router.back();
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input
-        type="text"
-        name="title"
-        value={form.title}
-        onChange={handleChange}
-        placeholder="Title"
-        required
-      />
-      <textarea
-        name="content"
-        value={form.content}
-        onChange={handleChange}
-        placeholder="Content"
-      />
-      <select name="tag" value={form.tag} onChange={handleChange}>
-        <option value="Todo">Todo</option>
-        <option value="Work">Work</option>
-        <option value="Personal">Personal</option>
-      </select>
-      <div>
-        <button type="submit">Save note</button>
-        <button type="button" onClick={() => router.back()}>
+    <form className={css.form} onSubmit={handleSubmit}>
+      <label className={css.formGroup}>
+        Title
+        <input
+          name="title"
+          value={form.title}
+          onChange={handleChange}
+          className={css.input}
+          placeholder="Enter title"
+        />
+      </label>
+
+      <label className={css.formGroup}>
+        Content
+        <textarea
+          name="content"
+          value={form.content}
+          onChange={handleChange}
+          className={css.textarea}
+          placeholder="Enter content (optional)"
+          rows={6}
+        />
+      </label>
+
+      <label className={css.formGroup}>
+        Tag
+        <select
+          name="tag"
+          value={form.tag}
+          onChange={handleChange}
+          className={css.select}
+        >
+          {noteTags.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {error && <div className={css.error}>{error}</div>}
+
+      <div className={css.actions}>
+        <button
+          type="button"
+          onClick={handleCancel}
+          className={css.cancelButton}
+        >
           Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className={css.submitButton}
+        >
+          {isSubmitting ? "Creating..." : "Create"}
         </button>
       </div>
     </form>

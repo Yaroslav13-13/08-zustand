@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import css from "../Header/Header.module.css";
-
 const tags = ["All", "Todo", "Work", "Personal", "Meeting", "Shopping"];
 
 interface TagsMenuProps {
@@ -13,7 +12,6 @@ interface TagsMenuProps {
 export default function TagsMenu({ isActive }: TagsMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
   const toggleMenu = () => setOpen(!open);
 
   useEffect(() => {
@@ -34,13 +32,14 @@ export default function TagsMenu({ isActive }: TagsMenuProps) {
       >
         Notes ▾
       </button>
-
       {open && (
         <ul className={css.dropdown}>
           {tags.map((tag) => (
             <li key={tag}>
               <Link
-                href={`/notes/filter/${tag}`}
+                href={
+                  tag === "All" ? "/notes/filter/All" : `/notes/filter/${tag}`
+                }
                 className={css.dropdownLink}
                 onClick={() => setOpen(false)}
               >

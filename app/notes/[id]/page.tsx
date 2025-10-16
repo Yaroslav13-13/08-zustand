@@ -1,27 +1,56 @@
-// export default function NotePage() {
-//   return null;
-// }
-
+import { fetchNoteById } from "@/lib/api";
 import type { Metadata } from "next";
 
-interface Props {
-  params: { slug: string[] };
+interface NotePageProps {
+  params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const filter = params.slug?.join("/") || "all";
-  return {
-    title: `Notes filtered by ${filter} — NoteHub`,
-    description: `View notes filtered by tag: ${filter}.`,
-    openGraph: {
-      title: `Notes filtered by ${filter} — NoteHub`,
-      description: `View notes filtered by tag: ${filter}.`,
-      url: `https://notehub.goit.study/notes/filter/${filter}`,
-      images: ["https://ac.goit.global/fullstack/react/notehub-og-meta.jpg"],
-    },
-  };
+export async function generateMetadata({
+  params,
+}: NotePageProps): Promise<Metadata> {
+  const { id } = await params;
+  try {
+    const note = await fetchNoteById(id);
+    const short = note.content ? note.content.slice(0, 140) : "";
+    return {
+      title: `${note.title} | NoteHub`,
+      description: short ? `${short}...` : "Note details in NoteHub",
+      openGraph: {
+        title: `${note.title} | NoteHub`,
+        description: short ? `${short}...` : "Note details in NoteHub",
+        url: `https://notehub.app/notes/${id}`,
+        images: [
+          {
+            url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
+            width: 1200,
+            height: 630,
+            alt: "NoteHub note details",
+          },
+        ],
+      },
+    };
+  } catch (error) {
+    return {
+      title: `Note | NoteHub`,
+      description: "Note details",
+      openGraph: {
+        title: `Note | NoteHub`,
+        description: "Note details",
+        url: `https://notehub.app/notes/${id}`,
+        images: [
+          {
+            url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
+            width: 1200,
+            height: 630,
+            alt: "NoteHub note",
+          },
+        ],
+      },
+    };
+  }
 }
 
-export default function FilteredNotesPage() {
-  return <div>Filtered notes page</div>;
+export default async function NotePage() {
+  // NoteDetails.client.tsx підключимо окремо — тут залишаю місце для клієнтського компонента
+  return null;
 }

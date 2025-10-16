@@ -4,6 +4,12 @@ import type { Note } from "../types/note";
 const API_URL = process.env.NEXT_PUBLIC_NOTEHUB_API_URL;
 const token = process.env.NEXT_PUBLIC_NOTEHUB_TOKEN;
 
+if (!API_URL || !token) {
+  console.warn(
+    "⚠️ Missing NEXT_PUBLIC_NOTEHUB_API_URL or NEXT_PUBLIC_NOTEHUB_TOKEN"
+  );
+}
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -31,7 +37,6 @@ export async function fetchNotes({
   tag,
 }: FetchNotesParams): Promise<NotesResponse> {
   const params: Record<string, string | number> = { page, perPage };
-
   if (search) params.search = search;
   if (tag && tag !== "All") params.tag = tag;
 
@@ -57,12 +62,7 @@ export interface CreateNotePayload {
 }
 
 export async function createNote(payload: CreateNotePayload): Promise<Note> {
-  const body: CreateNotePayload = {
-    title: payload.title,
-    tag: payload.tag,
-    content: payload.content ?? "",
-  };
-  const { data } = await api.post<Note>("/notes", body);
+  const { data } = await api.post<Note>("/notes", payload);
   return data;
 }
 
