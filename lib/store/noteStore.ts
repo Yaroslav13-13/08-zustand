@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 export type Draft = {
   title: string;
@@ -29,8 +29,17 @@ export const useNoteStore = create<NoteStore>()(
     }),
     {
       name: "notehub-note-store-v1",
-      getStorage: () =>
-        typeof window !== "undefined" ? localStorage : undefined,
+      storage: createJSONStorage(() => {
+        if (typeof window === "undefined") {
+          // SSR fallback
+          return {
+            getItem: (_: string): null => null,
+            setItem: (_: string, __: string): void => {},
+            removeItem: (_: string): void => {},
+          } as Storage;
+        }
+        return localStorage;
+      }),
     }
   )
 );
