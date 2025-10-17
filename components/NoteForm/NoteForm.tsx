@@ -6,6 +6,7 @@ import { createNote, type CreateNotePayload } from "@/lib/api";
 import type { NoteTag } from "@/types/note";
 import { useRouter } from "next/navigation";
 import { useNoteStore, initialDraft } from "@/lib/store/noteStore";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface NoteFormProps {
   onCancel?: () => void;
@@ -15,6 +16,7 @@ const noteTags: NoteTag[] = ["Todo", "Work", "Personal", "Meeting", "Shopping"];
 
 export default function NoteForm({ onCancel }: NoteFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const draft = useNoteStore((s) => s.draft);
   const setDraft = useNoteStore((s) => s.setDraft);
   const clearDraft = useNoteStore((s) => s.clearDraft);
@@ -22,14 +24,14 @@ export default function NoteForm({ onCancel }: NoteFormProps) {
   const [form, setForm] = useState({
     title: draft?.title ?? initialDraft.title,
     content: draft?.content ?? initialDraft.content,
-    tag: draft?.tag ?? initialDraft.tag,
+    tag: (draft?.tag as NoteTag) ?? initialDraft.tag,
   });
 
   useEffect(() => {
     setForm({
       title: draft?.title ?? initialDraft.title,
       content: draft?.content ?? initialDraft.content,
-      tag: draft?.tag ?? initialDraft.tag,
+      tag: (draft?.tag as NoteTag) ?? initialDraft.tag,
     });
   }, [draft]);
 
@@ -46,34 +48,37 @@ export default function NoteForm({ onCancel }: NoteFormProps) {
     });
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const mutation = useMutation({
+    mutationFn: (payload: CreateNotePayload) => createNote(payload),
+    onSuccess: async () => {
+      clearDraft();
+
+      await queryClient.invalidateQueries({ queryKey: ["notes"] });
+      router.back();
+    },
+    onError: (err: unknown) => {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError(null);
 
     if (!form.title || form.title.trim().length < 3) {
       setError("Title must be at least 3 characters");
-      setIsSubmitting(false);
       return;
     }
 
-    try {
-      const payload: CreateNotePayload = {
-        title: form.title.trim(),
-        content: form.content?.trim() || "",
-        tag: form.tag,
-      };
-      await createNote(payload);
-      clearDraft();
-      router.back();
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error("Something went wrong");
-      setError(e.message);
-      setIsSubmitting(false);
-    }
+    const payload: CreateNotePayload = {
+      title: form.title.trim(),
+      content: form.content?.trim() || "",
+      tag: form.tag,
+    };
+
+    mutation.mutate(payload);
   };
 
   const handleCancel = () => {
@@ -134,10 +139,10 @@ export default function NoteForm({ onCancel }: NoteFormProps) {
         </button>
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={mutation.isPending}
           className={css.submitButton}
         >
-          {isSubmitting ? "Creating..." : "Create"}
+          {mutation.isPending ? "Creating..." : "Create"}
         </button>
       </div>
     </form>
